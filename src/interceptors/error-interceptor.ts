@@ -3,51 +3,55 @@ import { HttpEvent, HttpInterceptor, HttpHandler, HttpRequest, HTTP_INTERCEPTORS
 import { Observable } from 'rxjs/Rx'; // IMPORTANTE: IMPORT ATUALIZADO
 import { StorageService } from '../services/storage.service';
 import { AlertController } from 'ionic-angular';
+import { FieldMessage } from '../models/fieldmessage';
 
 @Injectable()
 export class ErrorInterceptor implements HttpInterceptor {
 
-    constructor(public storage: StorageService, public alterCtrl: AlertController){        
+    constructor(public storage: StorageService, public alterCtrl: AlertController) {
     }
 
     intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         //console.log("Passou no interceptor");
         return next.handle(req)
-        .catch((error, caught) => {
-            
-            let errorObj = error;
-            if (errorObj.error) {
-                errorObj = errorObj.error;
-            }
-            if (!errorObj.status) {
-                errorObj = JSON.parse(errorObj);
-            }
+            .catch((error, caught) => {
 
-            console.log("Erro detectado pelo interceptor:");
-            console.log(errorObj);
-            
-            switch(errorObj.status){
+                let errorObj = error;
+                if (errorObj.error) {
+                    errorObj = errorObj.error;
+                }
+                if (!errorObj.status) {
+                    errorObj = JSON.parse(errorObj);
+                }
 
-                case 401:
-                    this.handle401()
-                    break;
+                console.log("Erro detectado pelo interceptor:");
+                console.log(errorObj);
 
-                case 403:
-                    this.handle403();
-                    break;
+                switch (errorObj.status) {
 
-                default:
-                    this.handleDefaultError(errorObj);
-            }
+                    case 401:
+                        this.handle401()
+                        break;
 
-            return Observable.throw(errorObj);//propagar o erro para o controlador que faz a requisição...
-        
-            
-            //return Observable.throw(error);
-        }) as any;
+                    case 403:
+                        this.handle403();
+                        break;
+
+                    case 422:
+                        this.handle422(errorObj);
+
+                    default:
+                        this.handleDefaultError(errorObj);
+                }
+
+                return Observable.throw(errorObj);//propagar o erro para o controlador que faz a requisição...
+
+
+                //return Observable.throw(error);
+            }) as any;
     }
 
-    handle401(){
+    handle401() {
         let alert = this.alterCtrl.create({
             title: 'Erro 401; falha de autenticação',
             message: 'Email ou senha incorretos',
@@ -61,11 +65,25 @@ export class ErrorInterceptor implements HttpInterceptor {
         alert.present();
     }
 
-    handle403(){
+    handle403() {
         this.storage.setLocalUser(null);
     }
 
-    handleDefaultError(errorObj){
+    handle422(errorObj) {
+        let alert = this.alterCtrl.create({
+            title: 'Erro 422: Validação',
+            message: this.listErrors(errorObj.errors),
+            enableBackdropDismiss: false,//é opcional, mas isso não deixa clicar fora do alert, obriga a apertar algum botão
+            buttons: [
+                {
+                    text: 'OK'
+                }
+            ]
+        });
+        alert.present();
+    }
+
+    handleDefaultError(errorObj) {
         let alert = this.alterCtrl.create({
             title: 'Erro ' + errorObj.status + ': ' + errorObj.error,
             message: errorObj.message,
@@ -78,6 +96,15 @@ export class ErrorInterceptor implements HttpInterceptor {
         });
         alert.present();
     }
+
+    private listErrors(messages: FieldMessage[]): string {
+        let s: string = '';
+        for (var i = 0; i < messages.length; i++) {
+            s = s + '<p><strong>' + messages[i].fieldName + "</strong>: " + messages[i].message + '</p>';
+        }
+        return s;
+    }
+
 }
 
 export const ErrorInterceptorProvider = {
