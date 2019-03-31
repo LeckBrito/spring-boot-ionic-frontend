@@ -21,6 +21,10 @@ export class ProdutosPage {
   }
 
   ionViewDidLoad() {
+    this.loadData();
+  }
+
+  loadData() {
     let categoria_id = this.navParams.get('categoria_id');//pegar o valor passado como parâmetro que veio da página de categorias...
 
     let loader = this.presentLoading();
@@ -31,7 +35,7 @@ export class ProdutosPage {
         loader.dismiss();
         this.loadImageUrls();
       },
-        error => { 
+        error => {
           loader.dismiss();
         });
   }
@@ -43,12 +47,12 @@ export class ProdutosPage {
         .subscribe(response => {
           item.imageUrl = `${API_CONFIG.bucketBaseUrl}/prod${item.id}-small.jpg`;
         },
-          error => {});
+          error => { });
     }
   }
 
-  showDetail(produto_id : string) {
-    this.navCtrl.push('ProdutoDetailPage', {produto_id: produto_id});
+  showDetail(produto_id: string) {
+    this.navCtrl.push('ProdutoDetailPage', { produto_id: produto_id });
   }
 
   presentLoading() {
@@ -57,6 +61,13 @@ export class ProdutosPage {
     });
     loader.present();
     return loader;
+  }
+
+  doRefresh(refresher) {
+    this.loadData();
+    setTimeout(() => {
+      refresher.complete();
+    }, 1000);
   }
 
 }
